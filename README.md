@@ -1,1 +1,1 @@
-#This repository contain script used for digital forensic analysis
+This repository contains script used for digital forensic analysis
