@@ -1,0 +1,99 @@
+#!/usr/bin/python3
+
+import os
+import re
+import sys
+
+filen = str(sys.argv[1])
+
+print("1. read partition table")
+choice = input("Selection: ")
+
+cmd1 = "dd if="+filen+" bs=512 count=1 status=none | xxd -g1 | sed -n '28,32p' > /root/Desktop/hexd.txt"
+os.system(cmd1)
+hexdfile = open("hexd.txt", 'r').readlines()
+regex = re.compile("000001f0:.*55 aa")
+if re.search(regex, str(hexdfile)) :
+   order = "Little Endian"
+else :
+   order = "Big Endian"
+print(order)
+
+types = {'00':'Empty','01':'FAT12,CHS','04':'FAT16, 16-32 MB, CHS','05':'Microsoft Extended, CHS','06':'FAT16, 32 MB-2 GB, CHS','07':'NTFS','0b':'FAT32, CHS','0c':'FAT32, LBA','0e':'FAT16, 32 MB-2 GB, LBA','0f':'Microsoft Extended, LBA','11':'Hidden FAT12, CHS','14':'Hidden FAT16, 16-32 MB, CHS','16':'Hidden FAT16, 32 MB-2 GB, CHS','1b':'Hidden FAT32, CHS','1c':'Hidden FAT32, LBA','1e':'Hidden FAT16, 32 MB-2 GB, LBA','42':'Microsoft MBR. Dynamic Disk','82':'Solaris x86','82':'Linux Swap','83':'Linux','84':'Hibernation','85':'Linux Extended','86':'NTFS Volume Set','87':'NTFS Volume Set','a0':'Hibernation','a1':'Hibernation','a5':'FreeBSD','a6':'OpenBSD','a8':'Mac OSX','a9':'NetBSD','ab':'Mac OSX Boot','b7':'BSDI','b8':'BSDI swap','ee':'EFI GPT Disk','ef':'EFI System Partition','fb':'Vmware File System','fc':'Vmware swap'}
+
+ifext = ["05","0f","42"]
+#Function
+def bootcheck(files,part,r,start,size,typ):
+   print('\n')
+   for match in re.finditer(r, str(files)):
+      if match.group(1) == "80" :
+         print("Partition "+part+" (bootable)")
+      else :
+         print("Partition "+part+" (NOT bootable)")
+      for m in re.findall(start, str(files)) :         
+         if order == "Little Endian" :
+            hexval = str(m[9:11]+m[6:8]+m[3:5]+m[0:2])
+            print("Starting Sector	Hex:",hexval,"	Bytes:",int(hexval,16))   
+         else: 
+            print("Starting Sector	Hex:",hexval,"	Bytes:",int(hexval,16))
+   for m in re.findall(size, str(files)) :         
+         if order == "Little Endian" :
+            hexsi = str(m[9:11]+m[6:8]+m[3:5]+m[0:2])
+            print("Size		Hex:",hexsi,"	Bytes:",int(hexsi,16))   
+         else: 
+            print("Size		Hex:",hexsi,"	Bytes:",int(hexsi,16))
+   for match in re.finditer(typ, str(files)) :
+      print("Type:", types[match.group(1)],"("+match.group(1)+")")
+      if match.group(1) in ifext :
+         findextend(et1,"E1",r1,s1,si1,t1)
+         findextend(et2,"E2",r2,s2,si2,t2)
+      else :
+         None
+
+def findextend(exreg,e,er,estart,esize,etyp) :
+   cmd = "mmls ext-part-test-2.dd > mmls.txt"
+   os.system(cmd)
+   file1 = open('mmls.txt','r').readlines()
+   for val in re.findall(exreg, str(file1)) :
+      if len(val) > 0 :
+         cmd2 = "dd if=ext-part-test-2.dd skip="+val+" count=1 bs=512 status=none | xxd -g1 | sed -n '28,32p' > extd.txt"
+         os.system(cmd2)
+         exd = open('extd.txt','r').readlines()
+         bootcheck(exd,e,er,estart,esize,etyp)       
+      else:
+         None 
+   
+s1 = re.compile(r"000001c0:...................(...........)")
+s2 = re.compile(r"000001d0:...................(...........)")
+s3 = re.compile(r"000001e0:...................(...........)")
+s4 = re.compile(r"000001f0:...................(...........)")
+si1 = re.compile(r"000001c0:...............................(...........)")
+si2 = re.compile(r"000001d0:...............................(...........)")
+si3 = re.compile(r"000001e0:...............................(...........)")
+si4 = re.compile(r"000001f0:...............................(...........)")
+r1 = re.compile(r"000001b0:...........................................(..)")
+r2 = re.compile(r"000001c0:...........................................(..)")
+r3 = re.compile(r"000001d0:...........................................(..)")
+r4 = re.compile(r"000001e0:...........................................(..)")
+t1 = re.compile(r"000001c0:.......(..)")
+t2 = re.compile(r"000001d0:.......(..)")
+t3 = re.compile(r"000001e0:.......(..)")
+t4 = re.compile(r"000001f0:.......(..)")
+et1 = re.compile(r"(..........).............................Extended Table \(#1\)")
+et2 = re.compile(r"(..........).............................Extended Table \(#2\)")
+
+bootcheck(hexdfile, "1", r1, s1, si1, t1)
+bootcheck(hexdfile, "2", r2, s2, si2, t2)
+bootcheck(hexdfile, "3", r3, s3, si3, t3)
+bootcheck(hexdfile, "4", r4, s4, si4, t4)
+
+
+
+
+
+
+
+
+
+
+
